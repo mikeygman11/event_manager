@@ -66,7 +66,7 @@ class UserService:
             # Ensure login-critical defaults are set
             validated_data["email_verified"] = True #verification fixed in this iteration
             validated_data["is_locked"] = False #reopening issue
-            validated_data["role"] = UserRole.AUTHENTICATED #users auth by default
+            validated_data["role"] = UserRole.AUTHENTICATED #users auth by default - fixed
 
             # Create User object
             new_user = User(**validated_data)
