@@ -64,9 +64,9 @@ class UserService:
             validated_data["hashed_password"] = hash_password(validated_data.pop("password"))
 
             # Ensure login-critical defaults are set
-            validated_data["email_verified"] = True
+            validated_data["email_verified"] = True #verification fixed in this iteration
             validated_data["is_locked"] = False
-            validated_data["role"] = UserRole.AUTHENTICATED
+            validated_data["role"] = UserRole.AUTHENTICATED #users auth by default
 
             # Create User object
             new_user = User(**validated_data)
