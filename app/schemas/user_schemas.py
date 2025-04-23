@@ -27,7 +27,7 @@ class UserBase(BaseModel):
     nickname: Optional[str] = Field(
         None,
         min_length=3,
-        max_length=20,
+        max_length=32,
         pattern=r'^[a-zA-Z0-9_-]+$',
         example=generate_nickname(),
         description="3–20 characters, letters/numbers/underscores/dashes only"
