@@ -52,11 +52,25 @@ class UserService:
     @classmethod
     async def create(cls, session: AsyncSession, user_data: Dict[str, str], email_service: EmailService) -> Optional[User]:
         try:
+            # Validate input using Pydantic schema
             validated_data = UserCreate(**user_data).model_dump()
+
+            # Check for duplicate email
+            if await cls.get_by_email(session, validated_data["email"]):
             # Check for duplicate email
             if await cls.get_by_email(session, validated_data["email"]):
                 logger.error("User with given email already exists.")
                 return None
+
+            # Secure password hashing
+            validated_data["hashed_password"] = hash_password(validated_data.pop("password"))
+
+            # Ensure login-critical defaults are set
+            validated_data["email_verified"] = True #verification fixed in this iteration
+            validated_data["is_locked"] = False #reopening issue
+            validated_data["role"] = UserRole.AUTHENTICATED #users auth by default - fixed
+
+            # Create User object
             # Secure password hashing
             validated_data["hashed_password"] = hash_password(validated_data.pop("password"))
 
@@ -67,6 +81,8 @@ class UserService:
 
             # Create User object
             new_user = User(**validated_data)
+
+            # Assign verification token
             # Assign verification token
             new_user.verification_token = generate_verification_token()
 
@@ -79,6 +95,7 @@ class UserService:
             session.add(new_user)
             await session.commit()
             await email_service.send_verification_email(new_user)
+
             # Save and send verification email
             return new_user
         except ValidationError as e:
