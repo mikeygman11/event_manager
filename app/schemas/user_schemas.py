@@ -56,7 +56,7 @@ class UserCreate(UserBase):
         if not re.search(r"\d", value):
             raise ValueError("Password must include at least one number.")
         if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
-            raise ValueError("Password must include at least one special character.")
+            raise ValueError("Password must include at least one special character.") #additional fixes here
         return value
 class UserUpdate(UserBase):
     email: Optional[EmailStr] = Field(None, example="john.doe@example.com")
