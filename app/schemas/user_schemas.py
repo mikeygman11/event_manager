@@ -1,5 +1,5 @@
 from builtins import ValueError, any, bool, str
-from pydantic import BaseModel, EmailStr, Field, validator, root_validator
+from pydantic import BaseModel, EmailStr, Field, validator, root_validator, HttpUrl
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -67,6 +67,19 @@ class UserCreate(UserBase):
 
 class UserUpdate(UserBase):
     email: Optional[EmailStr] = Field(None, example="john.doe@example.com")
+    nickname: Optional[str] = Field(
+        None,
+        min_length=3,
+        max_length=32,
+        pattern=r'^[a-zA-Z0-9_-]+$',
+        example="john_doe123"
+    )
+    first_name: Optional[str] = Field(None, example="John")
+    last_name: Optional[str] = Field(None, example="Doe")
+    bio: Optional[str] = Field(None, max_length=500, example="Updated bio about user.")
+    profile_picture_url: Optional[HttpUrl] = Field(None, example="https://example.com/profiles/john.jpg")
+    linkedin_profile_url: Optional[HttpUrl] = Field(None, example="https://linkedin.com/in/johndoe")
+    github_profile_url: Optional[HttpUrl] = Field(None, example="https://github.com/johndoe")
 
     @root_validator(pre=True)
     def check_at_least_one_value(cls, values):
