@@ -45,6 +45,10 @@ class UserCreate(UserBase):
     def validate_password_strength(cls, value):
         if len(value) < 8:
             raise ValueError("Password must be at least 8 characters long.")
+        if len(value) > 128:
+            raise ValueError("Password must be at most 128 characters long.")
+        if re.search(r"(.)\1{2,}", value):
+            raise ValueError("Password contains repeated characters (e.g., aaa or 111).")
         if not re.search(r"[A-Z]", value):
             raise ValueError("Password must include at least one uppercase letter.")
         if not re.search(r"[a-z]", value):
@@ -52,7 +56,7 @@ class UserCreate(UserBase):
         if not re.search(r"\d", value):
             raise ValueError("Password must include at least one number.")
         if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
-            raise ValueError("Password must include at least one special character.")
+            raise ValueError("Password must include at least one special character.") #additional fixes here
         return value
 class UserUpdate(UserBase):
     email: Optional[EmailStr] = Field(None, example="john.doe@example.com")

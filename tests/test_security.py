@@ -57,7 +57,7 @@ def test_verify_password_edge_cases():
 
 # This function tests the error handling when an internal error occurs in bcrypt
 def test_hash_password_internal_error(monkeypatch):
-    """Test proper error handling when an internal bcrypt error occurs."""
+    """Test error handling when an internal bcrypt error occurs."""
     def mock_bcrypt_gensalt(rounds):
         raise RuntimeError("Simulated internal error")
 
