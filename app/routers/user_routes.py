@@ -17,6 +17,7 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 settings = get_settings()
 
+
 @router.post("/register/", response_model=UserResponse, tags=["Login and Registration"])
 async def register(
     user_data: UserCreate,
@@ -27,6 +28,7 @@ async def register(
     if not user:
         raise HTTPException(status_code=400, detail="Email already exists or data invalid")
     return user
+
 
 @router.post("/login/", response_model=TokenResponse, tags=["Login and Registration"])
 async def login(
@@ -45,6 +47,7 @@ async def login(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @router.get("/verify-email/{user_id}/{token}", status_code=200, tags=["Login and Registration"])
 async def verify_email(
     user_id: UUID,
@@ -54,6 +57,7 @@ async def verify_email(
     if await UserService.verify_email_with_token(db, user_id, token):
         return {"message": "Email verified successfully"}
     raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
 
 @router.post("/users/", response_model=UserResponse, status_code=201, tags=["User Management Requires (Admin or Manager Roles)"])
 async def create_user(
@@ -76,6 +80,7 @@ async def create_user(
         links=create_user_links(created_user.id, request)
     )
 
+
 @router.get("/users/", response_model=UserListResponse, tags=["User Management Requires (Admin or Manager Roles)"])
 async def list_users(
     request: Request,
@@ -95,6 +100,7 @@ async def list_users(
         links=generate_pagination_links(request, skip, limit, total),
     )
 
+
 @router.get("/users/{user_id}", response_model=UserResponse, tags=["User Management Requires (Admin or Manager Roles)"])
 async def get_user(
     user_id: UUID,
@@ -111,6 +117,7 @@ async def get_user(
         links=create_user_links(user.id, request)
     )
 
+
 @router.put("/users/{user_id}", response_model=UserResponse, tags=["User Management Requires (Admin or Manager Roles)"])
 async def update_user(
     user_id: UUID,
@@ -119,7 +126,10 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_role(["ADMIN", "MANAGER"])),
 ):
-    updated = await UserService.update(db, user_id, user_update.model_dump(exclude_unset=True))
+    # 🆕 Only apply fields that were sent
+    update_data = user_update.model_dump(exclude_unset=True)
+    updated = await UserService.update(db, user_id, update_data)
+
     if not updated:
         raise HTTPException(status_code=404, detail="User not found or update failed")
 
@@ -127,6 +137,7 @@ async def update_user(
         **updated.__dict__,
         links=create_user_links(updated.id, request)
     )
+
 
 @router.delete("/users/{user_id}", status_code=204, tags=["User Management Requires (Admin or Manager Roles)"])
 async def delete_user(

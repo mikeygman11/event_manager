@@ -88,22 +88,50 @@ class UserService:
     @classmethod
     async def update(cls, session: AsyncSession, user_id: UUID, update_data: Dict[str, str]) -> Optional[User]:
         try:
-            # validated_data = UserUpdate(**update_data).dict(exclude_unset=True)
-            validated_data = UserUpdate(**update_data).dict(exclude_unset=True)
+            logger.info(f"RAW INPUT: {update_data}")
+
+            # Validate using schema
+            validated_data = UserUpdate(**update_data).model_dump(exclude_unset=True)
+
+            # Convert any complex types (e.g., HttpUrl) to strings for SQLAlchemy
+            for key, value in validated_data.items():
+                if isinstance(value, (str, int, float, bool)) or value is None:
+                    continue
+                validated_data[key] = str(value)
+
+            logger.info(f"VALIDATED DATA FOR UPDATE: {validated_data}")
+
+            if not validated_data:
+                logger.warning(f"No valid fields to update for user {user_id}.")
+                return None
 
             if 'password' in validated_data:
                 validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
-            query = update(User).where(User.id == user_id).values(**validated_data).execution_options(synchronize_session="fetch")
-            await cls._execute_query(session, query)
-            updated_user = await cls.get_by_id(session, user_id)
+
+            query = (
+                update(User)
+                .where(User.id == user_id)
+                .values(**validated_data)
+                .execution_options(synchronize_session="fetch")
+            )
+
+            result = await session.execute(query)
+            await session.commit()
+
+            logger.info(f"UPDATE EXECUTED. Rows affected: {result.rowcount}")
+
+            result = await session.execute(select(User).where(User.id == user_id))
+            updated_user = result.scalar_one_or_none()
+
             if updated_user:
-                session.refresh(updated_user)  # Explicitly refresh the updated user object
+                await session.refresh(updated_user)
                 logger.info(f"User {user_id} updated successfully.")
                 return updated_user
             else:
-                logger.error(f"User {user_id} not found after update attempt.")
-            return None
-        except Exception as e:  # Broad exception handling for debugging
+                logger.warning(f"User {user_id} not found after update.")
+                return None
+
+        except Exception as e:
             logger.error(f"Error during user update: {e}")
             return None
 
