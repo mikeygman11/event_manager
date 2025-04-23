@@ -56,8 +56,7 @@ class UserService:
             validated_data = UserCreate(**user_data).model_dump()
 
             # Check for duplicate email
-            if await cls.get_by_email(session, validated_data["email"]):
-            # Check for duplicate email
+
             if await cls.get_by_email(session, validated_data["email"]):
                 logger.error("User with given email already exists.")
                 return None
