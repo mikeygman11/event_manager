@@ -38,3 +38,14 @@ def test_invalid_passwords_raise_validation_error(bad_password):
 def test_valid_passwords_are_accepted(good_password):
     user = UserCreate(**{**VALID_BASE_USER, "password": good_password})
     assert user.password == good_password
+
+@pytest.mark.parametrize("password", [
+    "aaaaaaaA!",     # too repetitive
+    "Short1!",       # too short
+    "nouppercase1!", # no uppercase
+    "NOLOWERCASE1!", # no lowercase
+    "NoSpecialChar1",# no special character
+])
+def test_password_validation_fails(password):
+    with pytest.raises(ValueError):
+        UserCreate(email="test@example.com", password=password)

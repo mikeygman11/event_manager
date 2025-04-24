@@ -7,6 +7,7 @@ from app.utils.template_manager import TemplateManager
 from app.services.email_service import EmailService
 from app.services.jwt_service import decode_token
 from settings.config import Settings
+from typing import List
 
 def get_settings() -> Settings:
     return Settings()
@@ -44,7 +45,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
     return {"user_id": user_id, "role": user_role}  # Don't try to upper anything
 
-def require_role(allowed_roles: list[str]):
+def require_role(allowed_roles: List[str]):
     def role_checker(current_user: dict = Depends(get_current_user)):
         if current_user["role"] not in allowed_roles:
             raise HTTPException(status_code=403, detail="Operation not permitted")

@@ -36,7 +36,8 @@ from app.utils.security import hash_password
 from app.utils.template_manager import TemplateManager
 from app.services.email_service import EmailService
 from app.services.jwt_service import create_access_token
-
+from dotenv import load_dotenv
+load_dotenv(".env.test")
 fake = Faker()
 
 settings = get_settings()
@@ -48,20 +49,18 @@ AsyncSessionScoped = scoped_session(AsyncTestingSessionLocal)
 
 @pytest.fixture
 def email_service():
-    # Assuming the TemplateManager does not need any arguments for initialization
     class SafeEmailService:
         def __init__(self):
             self.template_manager = TemplateManager()
 
         async def send_verification_email(self, user):
-            try:
-                service = EmailService(template_manager=self.template_manager)
-                await service.send_verification_email(user)
-            except Exception as e:
-                # Log the error but don't raise it
-                print(f"[WARNING] Email service failed to send: {e}")
+            print(f"[MOCK] Verification email sent to {user.email}")
+
+        async def send_user_email(self, user_data, template_name):
+            print(f"[MOCK] send_user_email called for {user_data['email']} with template: {template_name}")
 
     return SafeEmailService()
+
 # this is what creates the http client for your api tests
 @pytest.fixture(scope="function")
 async def async_client(db_session):
@@ -195,12 +194,14 @@ async def admin_user(db_session: AsyncSession):
         email="admin@example.com",
         first_name="John",
         last_name="Doe",
-        hashed_password="securepassword",
+        hashed_password=hash_password("Secure*1234"),
         role=UserRole.ADMIN,
         is_locked=False,
+        email_verified=True,
     )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
 
 @pytest.fixture
@@ -249,7 +250,8 @@ def user_create_data(user_base_data):
 def user_update_data():
     return {
         "email": "john.doe.new@example.com",
-        "full_name": "John H. Doe",
+        "first_name": "John",
+        "last_name": 'Doe',
         "bio": "I specialize in backend development with Python and Node.js.",
         "profile_picture_url": "https://example.com/profile_pictures/john_doe_updated.jpg"
     }
@@ -257,7 +259,7 @@ def user_update_data():
 @pytest.fixture
 def user_response_data():
     return {
-        "id": "unique-id-string",
+        "id": str(uuid4()),
         "username": "testuser",
         "email": "test@example.com",
         "last_login_at": datetime.now(),
@@ -269,3 +271,64 @@ def user_response_data():
 @pytest.fixture
 def login_request_data():
     return {"username": "john_doe_123", "password": "SecurePassword123!"}
+
+
+@pytest.fixture
+async def user_token(verified_user):
+    token = create_access_token(data={"sub": verified_user.email, "role": verified_user.role.name})
+    return token
+
+@pytest.fixture
+async def admin_token(admin_user):
+    return create_access_token(data={"sub": admin_user.email, "role": admin_user.role.name})
+
+@pytest.fixture
+async def manager_token(manager_user):
+    return create_access_token(data={"sub": manager_user.email, "role": manager_user.role.name})
+
+@pytest.fixture
+def client():
+    from fastapi.testclient import TestClient
+    return TestClient(app)
+
+
+async def send_user_email(self, user_data, template_name):
+    service = EmailService(template_manager=self.template_manager)
+    await service.send_user_email(user_data, template_name)
+
+@pytest.fixture
+def user_base_data():
+    return {
+        "nickname": "johnnydoe",  # was missing
+        "email": "john.doe@example.com",
+        "full_name": "John Doe",
+        "bio": "I am a software engineer with over 5 years of experience.",
+        "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg"
+    }
+
+
+@pytest.fixture
+def login_request_data():
+    return {"email": "john_doe_123@example.com", "password": "SecurePassword123!"}
+
+@pytest.fixture
+def db(db_session):
+    return db_session
+
+@pytest.fixture
+async def create_user_and_token(db_session):
+    from app.models.user_model import User
+    from app.services.jwt_service import create_token
+    from app.utils.nickname_gen import generate_nickname
+
+    user = User(
+        nickname=generate_nickname(),
+        email="authtest@example.com",
+        password="Secure*1234",
+        is_email_verified=True
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    token = create_token({"sub": user.email, "role": str(user.role)})
+    return user, token

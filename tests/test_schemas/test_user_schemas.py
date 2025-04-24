@@ -25,8 +25,7 @@ def test_user_update_valid(user_update_data):
 # Tests for UserResponse
 def test_user_response_valid(user_response_data):
     user = UserResponse(**user_response_data)
-    assert user.id == user_response_data["id"]
-    # assert user.last_login_at == user_response_data["last_login_at"]
+    assert str(user.id) == str(user_response_data["id"])  # Fix: compare as strings
 
 # Tests for LoginRequest
 def test_login_request_valid(login_request_data):
@@ -67,3 +66,18 @@ def test_user_base_invalid_email(user_base_data_invalid):
     
     assert "value is not a valid email address" in str(exc_info.value)
     assert "john.doe.example.com" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("nickname", [
+    "john__doe",       # valid
+    "john.doe",        # invalid (dot not allowed)
+    "john doe",        # invalid (space)
+    "a"*21,            # too long
+])
+def test_nickname_constraints(nickname):
+    if "." in nickname or " " in nickname or len(nickname) > 20:
+        with pytest.raises(ValidationError):
+            UserCreate(email="john@example.com", password="Secure*1234", nickname=nickname)
+    else:
+        user = UserCreate(email="john@example.com", password="Secure*1234", nickname=nickname)
+        assert user.nickname == nickname

@@ -24,14 +24,7 @@ def validate_url(url: Optional[str]) -> Optional[str]:
 
 class UserBase(BaseModel):
     email: EmailStr = Field(..., example="john.doe@example.com")
-    nickname: Optional[str] = Field(
-        None,
-        min_length=3,
-        max_length=32,
-        pattern=r'^[a-zA-Z0-9_-]+$',
-        example=generate_nickname(),
-        description="3–20 characters, letters/numbers/underscores/dashes only"
-    )
+    nickname: str = Field(..., min_length=3, max_length=20)
     first_name: Optional[str] = Field(None, example="John")
     last_name: Optional[str] = Field(None, example="Doe")
     bio: Optional[str] = Field(None, example="Experienced software developer specializing in web applications.")
@@ -40,7 +33,11 @@ class UserBase(BaseModel):
     github_profile_url: Optional[str] = Field(None, example="https://github.com/johndoe")
 
     _validate_urls = validator('profile_picture_url', 'linkedin_profile_url', 'github_profile_url', pre=True, allow_reuse=True)(validate_url)
-
+    @validator("nickname")
+    def validate_nickname(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_-]{3,20}$", v):
+            raise ValueError("Nickname must be 3-20 characters, no spaces or special characters except '_' or '-'.")
+        return v
     class Config:
         from_attributes = True
 
@@ -65,21 +62,14 @@ class UserCreate(UserBase):
             raise ValueError("Password must include at least one special character.")
         return value
 
-class UserUpdate(UserBase):
-    email: Optional[EmailStr] = Field(None, example="john.doe@example.com")
-    nickname: Optional[str] = Field(
-        None,
-        min_length=3,
-        max_length=32,
-        pattern=r'^[a-zA-Z0-9_-]+$',
-        example="john_doe123"
-    )
-    first_name: Optional[str] = Field(None, example="John")
-    last_name: Optional[str] = Field(None, example="Doe")
-    bio: Optional[str] = Field(None, max_length=500, example="Updated bio about user.")
-    profile_picture_url: Optional[HttpUrl] = Field(None, example="https://example.com/profiles/john.jpg")
-    linkedin_profile_url: Optional[HttpUrl] = Field(None, example="https://linkedin.com/in/johndoe")
-    github_profile_url: Optional[HttpUrl] = Field(None, example="https://github.com/johndoe")
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    bio: Optional[str] = None
+    profile_picture_url: Optional[HttpUrl] = None
+    github_profile_url: Optional[HttpUrl] = None
+    linkedin_profile_url: Optional[HttpUrl] = None
 
     @root_validator(pre=True)
     def check_at_least_one_value(cls, values):

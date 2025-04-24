@@ -189,3 +189,35 @@ async def test_list_users_unauthorized(async_client, user_token):
         headers={"Authorization": f"Bearer {user_token}"}
     )
     assert response.status_code == 403  # Forbidden, as expected for regular user
+
+@pytest.mark.asyncio
+async def test_login_fails_for_locked_user(async_client, locked_user):
+    data = {"username": locked_user.email, "password": "MySuperPassword$1234"}
+    response = await async_client.post("/login/", data=data)
+    assert response.status_code == 403
+
+def test_login_fails_for_unverified_email(client, db, create_user_and_token):
+    user, _ = create_user_and_token(role="AUTHENTICATED", email_verified=False)
+    response = client.post("/login/", data={"username": user.email, "password": "Secure*1234"})
+    assert response.status_code == 401
+
+def test_admin_can_delete_user(client, admin_token, create_user_and_token):
+    user, _ = create_user_and_token()
+    response = client.delete(f"/users/{user.id}", headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 204
+
+def test_regular_user_cannot_access_user_list(client, user_token):
+    response = client.get("/users/", headers={"Authorization": f"Bearer {user_token}"})
+    assert response.status_code == 403
+
+
+def test_user_partial_update_with_invalid_url(client, admin_token, create_user_and_token):
+    user, _ = create_user_and_token()
+    bad_url_data = {"profile_picture_url": "not-a-valid-url"}
+    response = client.put(f"/users/{user.id}", json=bad_url_data, headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 422
+
+def test_user_partial_update_with_no_fields(client, admin_token, create_user_and_token):
+    user, _ = create_user_and_token()
+    response = client.put(f"/users/{user.id}", json={}, headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 422
